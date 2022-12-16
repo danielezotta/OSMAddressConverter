@@ -1,0 +1,25 @@
+{
+  "name": "civicitrento",
+  "version": "1.0.0",
+  "description": "Web application for housenumbers OpenData elaboration and visualization",
+  "main": "index.js",
+  "scripts": {
+    "start": "node --no-experimental-fetch index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Daniele Zotta",
+  "license": "MIT",
+  "dependencies": {
+    "@ngageoint/geopackage": "^4.2.3",
+    "@turf/turf": "^6.5.0",
+    "canvas": "^2.10.2",
+    "cookie-parser": "^1.4.6",
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "multer": "^1.4.5-lts.1",
+    "parse-kml": "^1.0.1",
+    "string-similarity": "^4.0.4",
+    "xml2json": "^0.12.0",
+    "xmlbuilder": "^15.1.1"
+  }
+}
