@@ -61,6 +61,38 @@ class SideMenu extends React.Component {
     });
 
   }
+  
+  uploadSHPFile(context, event) {
+
+    context.setLoading(true);
+    context.setSelectedBaseFile(Object.values(event.target.files).filter(x => x.name.includes(".shp"))[0].name);
+
+    var formData = new FormData();
+    formData.append("shp", Object.values(event.target.files).filter(x => x.name.includes(".shp"))[0]);
+    formData.append("shp", Object.values(event.target.files).filter(x => x.name.includes(".dbf"))[0]);
+    formData.append("shp", Object.values(event.target.files).filter(x => x.name.includes(".shx"))[0]);
+    formData.append("shp", Object.values(event.target.files).filter(x => x.name.includes(".prj"))[0]);
+
+    fetch("/api/files/shp", { method: "POST", body: formData, })
+    .then((response) => response.json())
+    .then((response) => {
+      console.log(response);
+      context.setMarkersBase(response);
+      context.setLoading(false);
+
+      var obj = {};
+      Object.keys(response[0].properties).map((e) => 
+        obj[e] = false
+      );
+      this.setState({ markersBaseAttrs: obj });
+
+
+    }, (e) => {
+      alert("Error submitting form!");
+      context.setLoading(false);
+    });
+
+  }
 
   uploadKMLFile(context, event) {
 
@@ -73,6 +105,7 @@ class SideMenu extends React.Component {
     fetch("/api/files/kml", { method: "POST", body: formData, })
       .then((response) => response.json())
       .then((response) => {
+        console.log(response);
 
         context.setMarkersBase(response);
         context.setLoading(false);
@@ -171,6 +204,23 @@ class SideMenu extends React.Component {
               </Button>
             </label>
             
+            <br/>
+
+            <input
+              accept=".shp,.dbf,.shx,.prj"
+              className={ this.props.input }
+              style={{ display: 'none' }}
+              id="shp-button-file"
+              multiple
+              type="file"
+              onChange={ (event) => this.uploadSHPFile(context, event) }
+            />
+            <label htmlFor="shp-button-file">
+              <Button sx={{ m: 1 }} variant="contained" component="span" startIcon={ <FileUploadIcon/> }> 
+                Upload municipality .shp
+              </Button>
+            </label>
+
             <Typography variant="p" component="div" sx={{ flexGrow: 1, m: 1 }}>
               {`${context.selectedBaseFile} [${context.markersBase.length} addresses]`}
             </Typography>

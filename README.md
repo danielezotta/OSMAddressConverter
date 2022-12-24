@@ -25,7 +25,7 @@ The files used for development are inside the `example_files` directory.
 
 
 ### OpenData or municipality files
-For now the only supported format is `KML` and in the specific way it's built in the `example_files` folder.
+For now, supported formats are `KML` and `SHP` (required are `.shp, .shx, .dbf` and `.prj`). Used files can be found in the `example_files` folder.
 
 ### OpenStreetMap file
 At the moment only `GPKG` extractions are supported.
@@ -36,7 +36,7 @@ At the moment only `GPKG` extractions are supported.
 At the moment, this web application is stable and functional, but not very responsive. Major problems are:
 
 * a lot of markers cause the map to lag massively when at max zoom, because leaflet-react markers aren't for now not using WebGL in rendering
-* only one file format supported for each OpenData and OSM extractions, but planning on more
+* only one file format supported for OSM extractions, but planning on more
 
 ## License
 

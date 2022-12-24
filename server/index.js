@@ -9,7 +9,10 @@ const turf = require('@turf/turf');
 const stringSimilarity = require("string-similarity");
 var { GeoPackageAPI, setCanvasKitWasmLocateFile } = require('@ngageoint/geopackage');
 const xmlbuilder = require('xmlbuilder');
-
+require('@loaders.gl/polyfills');
+const { ShapefileLoader } = require('@loaders.gl/shapefile');
+const { load } = require('@loaders.gl/core');
+const Proj4js = require("proj4");
 
 const app = express();
 const port = 3001;
@@ -39,6 +42,7 @@ var storage = multer.diskStorage({
 })
 var upload = multer({storage: storage})
 
+
 app.post("/api/files/kml", upload.single("kml"), async (req, res) => {
   try {
     if (req.file) {
@@ -52,25 +56,23 @@ app.post("/api/files/kml", upload.single("kml"), async (req, res) => {
         var addressesPoints = [];
 
         for (var i = 0; i < addresses.length; i++) {
-          if (addresses[i].ExtendedData.SchemaData.SimpleData.find(x => x.name == "tipo_en")['$t'] != "side entrance") {
 
-            var geoJSONPoint = new Object();
+          var geoJSONPoint = new Object();
 
-            geoJSONPoint.type = "Feature";
-            geoJSONPoint.id = i;
-            geoJSONPoint.geometry = new Object();
-            geoJSONPoint.geometry,type = "Point";
-            geoJSONPoint.geometry.coordinates = [ parseFloat(parseFloat(addresses[i].Point.coordinates.toString().split(',')[1]).toFixed(7)), parseFloat(parseFloat(addresses[i].Point.coordinates.toString().split(',')[0]).toFixed(7)) ];
-            geoJSONPoint.properties = new Object();
+          geoJSONPoint.type = "Feature";
+          geoJSONPoint.id = i;
+          geoJSONPoint.geometry = new Object();
+          geoJSONPoint.geometry,type = "Point";
+          geoJSONPoint.geometry.coordinates = [ parseFloat(parseFloat(addresses[i].Point.coordinates.toString().split(',')[1]).toFixed(7)), parseFloat(parseFloat(addresses[i].Point.coordinates.toString().split(',')[0]).toFixed(7)) ];
+          geoJSONPoint.properties = new Object();
 
-            for (var j = 0; j < addresses[i].ExtendedData.SchemaData.SimpleData.length; j++) {
-              var addressSpecs = addresses[i].ExtendedData.SchemaData.SimpleData[j];
-              geoJSONPoint.properties[addressSpecs.name] = addressSpecs.$t;
-            }
+          for (var j = 0; j < addresses[i].ExtendedData.SchemaData.SimpleData.length; j++) {
+            var addressSpecs = addresses[i].ExtendedData.SchemaData.SimpleData[j];
+            geoJSONPoint.properties[addressSpecs.name] = addressSpecs.$t;
+          }
 
-            addressesPoints.push(geoJSONPoint);
-
-          }          
+          addressesPoints.push(geoJSONPoint);
+            
         }
 
         req.session.baseGeoJson = addressesPoints;
@@ -95,6 +97,59 @@ app.post("/api/files/kml", upload.single("kml"), async (req, res) => {
   
 });
 
+
+app.post("/api/files/shp", upload.array("shp"), async (req, res) => {
+  try {
+    if (req.files) {
+
+      const shapeFileName = req.files.filter(x => x.filename.includes(".shp"))[0].filename.replace('.shp', '');
+
+      fs.renameSync(`./uploads/${req.files.filter(x => x.filename.includes(".shx"))[0].filename}`, `./uploads/${shapeFileName}.shx`);
+      fs.renameSync(`./uploads/${req.files.filter(x => x.filename.includes(".dbf"))[0].filename}`, `./uploads/${shapeFileName}.dbf`);
+      fs.renameSync(`./uploads/${req.files.filter(x => x.filename.includes(".prj"))[0].filename}`, `./uploads/${shapeFileName}.prj`);
+
+      // Begin elaboration
+      const data = await load(`./uploads/${shapeFileName}.shp`, ShapefileLoader);
+
+      const shapeFileProjection = data.prj;
+      const leafletProjection = 'PROJCS["WGS 84 / Pseudo-Mercator",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]],PROJECTION["Mercator_1SP"],PARAMETER["central_meridian",0],PARAMETER["scale_factor",1],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],AXIS["Northing",NORTH],EXTENSION["PROJ4","+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +nadgrids=@null +wktext +no_defs"],AUTHORITY["EPSG","3857"]]"';
+
+      // Add id attribute and reproject coordinates
+      for (var i = data.data.length - 1; i >= 0; i--) {
+        data.data[i].id = i;
+        data.data[i].geometry.coordinates = Proj4js(shapeFileProjection, 'EPSG:4326', data.data[i].geometry.coordinates).reverse();
+      }
+
+      res.status(200).json(data.data);
+
+      fs.unlink(`./uploads/${shapeFileName}.shp`, (err) => {
+        if (err)
+          return console.error(err);
+      });
+      fs.unlink(`./uploads/${shapeFileName}.shx`, (err) => {
+        if (err)
+          return console.error(err);
+      });
+      fs.unlink(`./uploads/${shapeFileName}.dbf`, (err) => {
+        if (err)
+          return console.error(err);
+      });
+      fs.unlink(`./uploads/${shapeFileName}.prj`, (err) => {
+        if (err)
+          return console.error(err);
+      });
+
+    } else {
+      res.status(400).send({
+        status: false,
+        data: "File Not Found in the request",
+      });
+    }
+  } catch (err) {
+    res.status(500).send(err);
+  }
+  
+});
 
 app.post("/api/files/gpkg", upload.single("gpkg"), (req, res) => {
   
